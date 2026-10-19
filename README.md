@@ -22,19 +22,19 @@ The in-app **Demo guide** contains a five-minute presenter walkthrough. **Presen
 1. Run **Support triage** to return a boolean, routing choice, and urgency score together.
 2. Shuffle the input to a low-priority message and rerun. Expand questions to change their instructions, labels, answer keys, types, or scale. Toggle questions or add up to eight.
 3. Open **Request** and **Response** to show the actual contract and live payload. Image bytes are omitted from the request preview.
-4. Switch to **Return eligibility** to evaluate a synthetic JSON record against an explicit policy.
+4. Switch to **Return eligibility** to evaluate a synthetic JSON record against policy rules in the decision instructions.
 5. Try **Visual inspection** with the included synthetic damaged-monitor PNG, or upload your own PNG/JPEG/WebP (4 MB max). It makes an actual multimodal request, with image bytes supplied to the decision model.
 6. Use **Benchmark ×3** for three sequential real calls. Run history shows round-trip latency and Gateway latency, with measured p50/p95, a chart, and JSON export.
 7. Adjust the automation threshold to change the local policy outcome immediately. No additional inference is needed. Missing confidence, refusals, and uncertain answers go to review.
 8. Try the five additional use cases:
-   - **Guardrails**: classify a message against an editable access policy.
+   - **Guardrails**: classify a message against an access policy in the decision instructions.
    - **Model router**: choose from an editable capability and latency table. The candidates are illustrative routing targets; this preset returns a selection without invoking that target model.
-   - **Lead qualification**: apply business qualification and priority criteria to an inquiry.
+   - **Lead qualification**: apply qualification and priority rules in the decision instructions to an inquiry.
    - **Catalog classification**: classify the included synthetic backpack image by category and color, and flag listing conflicts.
-   - **Contract screening**: check a short supplier clause against an editable company playbook and route deviations for review.
-9. Open **Custom scenario** to start with blank context and an open decision editor. Choose Text, JSON, or Image; supply your context; edit the answer key, label, type, instructions, and choice or scale labels. Add up to eight questions. Your draft, format, and uploaded image survive switching use cases during the session. Refresh clears the draft.
+   - **Contract screening**: check a short supplier clause against a company playbook in the decision instructions and route deviations for review.
+9. Open **Custom scenario** to start with blank context and an open decision editor. Choose Text, JSON, or Image; supply your context; edit the answer key, label, type, instructions, and choice or scale labels. Each choice or scale label has its own editable row, with add/remove controls and a limit of 2 to 10 unique labels. Add up to eight questions. Your draft, format, and uploaded image survive switching use cases during the session. Refresh clears the draft.
 
-Use the grouped sidebar to choose among the eight examples and Custom scenario. At smaller widths, a native select shows the same groups. The workspace keeps context, editable decisions, and results visible without a marketing introduction or feature summaries.
+Use the grouped sidebar to choose among the eight examples and Custom scenario. At smaller widths, a native select shows the same groups. The workspace keeps context, editable decisions, and results visible without a marketing introduction or feature summaries. Preset context contains evidence: records, messages, product descriptions, or candidate capabilities. Evaluation rules live in each decision's `instructions` field; choices and ordered scale labels are separate arrays in the native request.
 
 ## Measurement and model behavior
 

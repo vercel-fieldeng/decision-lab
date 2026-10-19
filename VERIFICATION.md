@@ -2,28 +2,43 @@
 
 Verified October 16, 2026, locally and on the production deployment in Internal Playground.
 
+## October 18 context and option editors
+
+| Before                                                                                                            | After                                                                                                                                                                                                         |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Return, lead, contract, and guardrail rules mixed into shared context                                             | Static policies and evaluation criteria are in each relevant decision's `instructions`; context holds the record, inquiry, clause, or message.                                                                |
+| Image context contained task commands and repeated option lists; router context contained a selection instruction | Image context contains product evidence only. Routing rules live in decision instructions; candidate capabilities remain context data. Choice lists appear only in the decision configuration.                |
+| Choices and score levels entered in a multiline textarea                                                          | Individual input rows with add/remove buttons, visible numbering, and ordered score labels. Labels remain native `choices` and `levels` arrays.                                                               |
+| Line parsing determined label boundaries                                                                          | Each input edits one array entry, allows up to 120 characters, and preserves spaces within a label. Blank or duplicate labels are rejected before inference. Add/remove controls enforce 2 to 10 rows.        |
+| No row-specific keyboard behavior                                                                                 | Adding focuses the new input. Removing a middle row preserves remaining input nodes and values, then focuses the following row. Row controls use at least 40 px hit areas and inherit the running-state lock. |
+| Demo documentation placed rules in supplied context                                                               | README now describes evidence in context, per-decision rules, and the row editor.                                                                                                                             |
+
+Validation: all ten existing tests, strict typecheck, and production build passed. Browser checks covered add/remove, minimum and maximum rows, blank and duplicate validation, exact native choice values, score order, disabled controls during a live call, and custom draft restoration after changing scenarios. No horizontal overflow at 390 px. Light and dark axe audits, with animations disabled, reported zero violations; the existing keyboard shortcut glyph remains an incomplete contrast check. Browser reported no application errors.
+
+Live browser → API → Gateway → rendered-result checks passed for all seven affected presets: returns (Yes / Refund / Low), inspection (Yes / Replace / Unusable), leads (Yes / Sales / High), catalog (Backpacks / Olive / No), contracts (No / Legal review / Major), guardrails (Yes / Block / Critical), and router (Yes / Vision / Medium). A custom three-choice scenario returned Pending. Request previews confirmed policies in each relevant question's `instructions` and separate choice/level arrays. Images still use inline bytes for inference and redacted request previews.
+
 ## October 18 use case expansion
 
 The playground now has eight examples and a custom scenario. Each new example was tested from the browser through `/api/decide` and AI Gateway to rendered results.
 
-| Scenario | Live result |
-| --- | --- |
-| Guardrails | Policy violation: Yes; Action: Block; Risk: Critical. |
-| Model router | Needs vision: Yes; Selected model: Vision; Complexity: Medium. A simple text classification request instead selected Fast text with no vision requirement. |
-| Lead qualification | Qualified: Yes; Route: Sales; Priority: High. |
-| Catalog classification | Actual backpack PNG sent inline; Category: Backpacks; Color: Olive; Needs review: No. |
-| Contract screening | Default clause: outside playbook, Legal review, Major deviation. Matching notice-period and price-increase limits: within playbook, Standard, None. An ambiguous notice-period phrase discovered during testing was clarified. |
+| Scenario               | Live result                                                                                                                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Guardrails             | Policy violation: Yes; Action: Block; Risk: Critical.                                                                                                                                                                          |
+| Model router           | Needs vision: Yes; Selected model: Vision; Complexity: Medium. A simple text classification request instead selected Fast text with no vision requirement.                                                                     |
+| Lead qualification     | Qualified: Yes; Route: Sales; Priority: High.                                                                                                                                                                                  |
+| Catalog classification | Actual backpack PNG sent inline; Category: Backpacks; Color: Olive; Needs review: No.                                                                                                                                          |
+| Contract screening     | Default clause: outside playbook, Legal review, Major deviation. Matching notice-period and price-increase limits: within playbook, Standard, None. An ambiguous notice-period phrase discovered during testing was clarified. |
 
-| Before | After |
-| --- | --- |
-| Four scenario tabs | Grouped desktop sidebar with all nine use cases; native grouped select at widths up to 1160 px. |
-| Large introduction, flow illustration, and feature summaries | Compact page title and workspace centered on context, decisions, and results. |
-| Promotional result placeholders and repeated outcome prose | Short empty state and direct result labels. |
-| Fixed monitor-specific sample loading and image description | Typed image metadata per preset, with a synthetic backpack SVG and PNG for catalog classification. |
+| Before                                                             | After                                                                                                                       |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Four scenario tabs                                                 | Grouped desktop sidebar with all nine use cases; native grouped select at widths up to 1160 px.                             |
+| Large introduction, flow illustration, and feature summaries       | Compact page title and workspace centered on context, decisions, and results.                                               |
+| Promotional result placeholders and repeated outcome prose         | Short empty state and direct result labels.                                                                                 |
+| Fixed monitor-specific sample loading and image description        | Typed image metadata per preset, with a synthetic backpack SVG and PNG for catalog classification.                          |
 | Scenario editors could retain the previous input's scroll position | Context remounts on use case or format changes; decision editors reset per scenario. Custom draft restoration is preserved. |
-| Text presets could be mislabeled as custom input | Provenance checks match the selected preset, including the contract sample. |
-| Small picker and navigation controls | At least 40 px controls for the new navigation and model selector, keyboard focus rings, and native mobile selection. |
-| Older documentation link and verbose labels | Current native Decisions API docs, shorter labels, and no em dashes in seeded UI copy. |
+| Text presets could be mislabeled as custom input                   | Provenance checks match the selected preset, including the contract sample.                                                 |
+| Small picker and navigation controls                               | At least 40 px controls for the new navigation and model selector, keyboard focus rings, and native mobile selection.       |
+| Older documentation link and verbose labels                        | Current native Decisions API docs, shorter labels, and no em dashes in seeded UI copy.                                      |
 
 Validation: ten tests passed, strict typecheck passed, and production build passed. Seeded-use-case tests load the actual PNGs and validate every default request. Browser checks found no horizontal overflow at 390, 800, 1160, 1280, and 1440 px. Mobile selection, light/dark layouts, and Present mode worked. The custom image draft, input, format, and edited decision survived switching use cases. Mobile light and desktop dark axe audits reported zero violations; the keyboard shortcut glyph remains an incomplete automated contrast check. Browser console had no application errors.
 
@@ -50,42 +65,42 @@ Observed timings are individual samples, not performance guarantees.
 
 Choose text, structured JSON, or an image; configure typed questions; send a live request through the server and AI Gateway; inspect the answers, confidence, latency, cost, and local automation policy.
 
-| Boundary | Result | Evidence |
-| --- | --- | --- |
-| UI → server → Gateway → UI | Passed | Text, JSON and image presets all returned real answers through `/api/decide`. |
-| Authenticated availability | Passed | Catalog complete; `openai/gpt-6-luna-decisions` eligible, ten other decision models blocked. |
-| Multimodal image input | Passed | Actual synthetic PNG sent as an `input_image` data URL; model detected visible damage and recommended replacement. |
-| Benchmark | Passed | Three sequential calls produced three history entries and measured p50/p95. |
-| Local confidence policy | Passed | Raising image-run threshold from 85% to 99% changed the outcome to human review; run count stayed at four. |
-| Configurable contract | Passed | Disabling a score question changed the request to two questions. Image bytes are redacted in the request preview. |
-| Keyboard and presenter controls | Passed | Arrow keys moved Request → Response; Escape closed the guide; Present hid extra page content. |
-| Input validation | Passed | Malformed JSON and zero enabled questions returned HTTP 400; cross-origin POST returned 403. |
-| Mobile | Passed | At 390 × 844, document width was 390 px and the workspace used a single column. |
-| Accessibility | Passed | Automated axe audits reported zero violations on light desktop, mobile, and dark presentation mode. |
-| Focused tests | Passed | Eight tests cover mixed question contracts, image encoding, invalid requests, confidence policy, latency percentiles, custom modalities, and malformed runtime types. |
-| TypeScript and production build | Passed | `npm run typecheck` and `npm run build`; Next.js 16.4.0. |
-| Dependency audit | Passed | Zero known vulnerabilities reported after updating the scaffold's Next.js version. |
-| Credential refresh | Passed | `npm run auth:refresh` refreshed only the server-side OIDC token, preserving other environment values. |
-| Custom scenario | Passed | Blank fourth tab; text, JSON and uploaded-image requests returned live results. Boolean, choice and score questions produced the expected native API types. |
-| Custom draft | Passed | Context, edited questions, format, toggles and uploaded image survived switching away and back to the custom tab. |
-| Runtime typing | Passed | Unknown input is checked without a `DecisionConfig` cast; invalid enum values, malformed fields, duplicate keys/options, blank labels/instructions, invalid JSON and missing images are rejected before inference. Eight focused tests and strict TypeScript checks passed. |
-| Presentation copy | Passed | Removed the requested footer, credit note, threshold help, history captions, support description, and Gateway success label. |
-| Custom mobile accessibility | Passed | No horizontal overflow at 390 px and 800 px; four scenario tabs form a two-column grid on mobile. Axe reported zero violations after preserving readable labels for toggled-off questions. |
+| Boundary                        | Result | Evidence                                                                                                                                                                                                                                                                    |
+| ------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UI → server → Gateway → UI      | Passed | Text, JSON and image presets all returned real answers through `/api/decide`.                                                                                                                                                                                               |
+| Authenticated availability      | Passed | Catalog complete; `openai/gpt-6-luna-decisions` eligible, ten other decision models blocked.                                                                                                                                                                                |
+| Multimodal image input          | Passed | Actual synthetic PNG sent as an `input_image` data URL; model detected visible damage and recommended replacement.                                                                                                                                                          |
+| Benchmark                       | Passed | Three sequential calls produced three history entries and measured p50/p95.                                                                                                                                                                                                 |
+| Local confidence policy         | Passed | Raising image-run threshold from 85% to 99% changed the outcome to human review; run count stayed at four.                                                                                                                                                                  |
+| Configurable contract           | Passed | Disabling a score question changed the request to two questions. Image bytes are redacted in the request preview.                                                                                                                                                           |
+| Keyboard and presenter controls | Passed | Arrow keys moved Request → Response; Escape closed the guide; Present hid extra page content.                                                                                                                                                                               |
+| Input validation                | Passed | Malformed JSON and zero enabled questions returned HTTP 400; cross-origin POST returned 403.                                                                                                                                                                                |
+| Mobile                          | Passed | At 390 × 844, document width was 390 px and the workspace used a single column.                                                                                                                                                                                             |
+| Accessibility                   | Passed | Automated axe audits reported zero violations on light desktop, mobile, and dark presentation mode.                                                                                                                                                                         |
+| Focused tests                   | Passed | Eight tests cover mixed question contracts, image encoding, invalid requests, confidence policy, latency percentiles, custom modalities, and malformed runtime types.                                                                                                       |
+| TypeScript and production build | Passed | `npm run typecheck` and `npm run build`; Next.js 16.4.0.                                                                                                                                                                                                                    |
+| Dependency audit                | Passed | Zero known vulnerabilities reported after updating the scaffold's Next.js version.                                                                                                                                                                                          |
+| Credential refresh              | Passed | `npm run auth:refresh` refreshed only the server-side OIDC token, preserving other environment values.                                                                                                                                                                      |
+| Custom scenario                 | Passed | Blank fourth tab; text, JSON and uploaded-image requests returned live results. Boolean, choice and score questions produced the expected native API types.                                                                                                                 |
+| Custom draft                    | Passed | Context, edited questions, format, toggles and uploaded image survived switching away and back to the custom tab.                                                                                                                                                           |
+| Runtime typing                  | Passed | Unknown input is checked without a `DecisionConfig` cast; invalid enum values, malformed fields, duplicate keys/options, blank labels/instructions, invalid JSON and missing images are rejected before inference. Eight focused tests and strict TypeScript checks passed. |
+| Presentation copy               | Passed | Removed the requested footer, credit note, threshold help, history captions, support description, and Gateway success label.                                                                                                                                                |
+| Custom mobile accessibility     | Passed | No horizontal overflow at 390 px and 800 px; four scenario tabs form a two-column grid on mobile. Axe reported zero violations after preserving readable labels for toggled-off questions.                                                                                  |
 
 Initial live round trips were 276 ms for support text, 339 ms for structured JSON, and 530 ms for image inspection. A later image call took 871 ms. These are observed samples, not a performance guarantee. Round-trip measurements include network, routing, and inference; the interface never labels them as isolated model compute time.
 
 ## Interface choices
 
-| Before | After |
-| --- | --- |
-| Empty project | Geist Sans/Mono, a monochrome light/dark palette, 4 px spacing, restrained weights and letter spacing, and surface outlines composed with shadows. |
-| No presentation flow | Three synthetic presets, editable questions, payload inspection, measured history, and a five-minute presenter guide. |
-| Dense result distributions | Primary answers stay visible; detailed option probabilities expand on demand. |
-| Full explanatory page during a demo | Present mode puts the workspace first while retaining a screen-reader heading. |
-| Default browser focus | Double-ring focus indicators, a skip link, keyboard-operable tabs, accessible labels, and a native modal dialog. |
-| Static interaction states | Explicit color/background transitions, a live elapsed timer, small answer transitions, tabular numerals, and reduced-motion support. |
-| Low-contrast muted annotations | Darker muted text; light desktop and mobile audits reported zero violations. |
-| Seeded data provenance unspecified | All three example scenarios and the product illustration are synthetic. Runtime inputs are labeled custom after edits or uploads. |
+| Before                              | After                                                                                                                                              |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Empty project                       | Geist Sans/Mono, a monochrome light/dark palette, 4 px spacing, restrained weights and letter spacing, and surface outlines composed with shadows. |
+| No presentation flow                | Three synthetic presets, editable questions, payload inspection, measured history, and a five-minute presenter guide.                              |
+| Dense result distributions          | Primary answers stay visible; detailed option probabilities expand on demand.                                                                      |
+| Full explanatory page during a demo | Present mode puts the workspace first while retaining a screen-reader heading.                                                                     |
+| Default browser focus               | Double-ring focus indicators, a skip link, keyboard-operable tabs, accessible labels, and a native modal dialog.                                   |
+| Static interaction states           | Explicit color/background transitions, a live elapsed timer, small answer transitions, tabular numerals, and reduced-motion support.               |
+| Low-contrast muted annotations      | Darker muted text; light desktop and mobile audits reported zero violations.                                                                       |
+| Seeded data provenance unspecified  | All three example scenarios and the product illustration are synthetic. Runtime inputs are labeled custom after edits or uploads.                  |
 
 ## Limits
 

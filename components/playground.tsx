@@ -79,6 +79,95 @@ function Elapsed({ started }: { started: number }) {
   return <span className="mono">{time(elapsed)}</span>;
 }
 
+function OptionRows({
+  options,
+  type,
+  title,
+  onChange,
+  disabled,
+}: {
+  options: string[];
+  type: "choice" | "score";
+  title: string;
+  onChange: (options: string[]) => void;
+  disabled: boolean;
+}) {
+  const [rowIds, setRowIds] = useState(() => options.map((_, i) => i));
+  const nextId = useRef(options.length);
+  const inputs = useRef(new Map<number, HTMLInputElement>());
+  const focusRow = useRef<number | null>(null);
+  const label = type === "score" ? "Level" : "Choice";
+
+  useEffect(() => {
+    if (focusRow.current === null) return;
+    inputs.current.get(focusRow.current)?.focus();
+    focusRow.current = null;
+  }, [rowIds]);
+
+  return (
+    <fieldset className="option-rows" disabled={disabled}>
+      <legend>{type === "score" ? "Scale labels" : "Choices"}</legend>
+      <p className="field-hint">
+        {type === "score"
+          ? "Lowest to highest. 2 to 10 unique labels."
+          : "2 to 10 unique choices."}
+      </p>
+      <div className="option-list">
+        {options.map((option, i) => (
+          <div className="option-row" key={rowIds[i]}>
+            <span className="option-number mono" aria-hidden="true">
+              {i + 1}
+            </span>
+            <input
+              ref={(node) => {
+                if (node) inputs.current.set(rowIds[i], node);
+                else inputs.current.delete(rowIds[i]);
+              }}
+              aria-label={`${label} ${i + 1} for ${title}`}
+              value={option}
+              maxLength={120}
+              placeholder={`${label} ${i + 1}`}
+              onChange={(e) =>
+                onChange(
+                  options.map((value, j) => (j === i ? e.target.value : value)),
+                )
+              }
+            />
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={`Remove ${label.toLowerCase()} ${i + 1} for ${title}`}
+              disabled={options.length <= 2}
+              onClick={() => {
+                focusRow.current = rowIds[i + 1] ?? rowIds[i - 1];
+                setRowIds(rowIds.filter((_, j) => j !== i));
+                onChange(options.filter((_, j) => j !== i));
+              }}
+            >
+              <Icon name="close" size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        className="text-button add-option"
+        disabled={options.length >= 10}
+        onClick={() => {
+          const id = nextId.current++;
+          focusRow.current = id;
+          setRowIds([...rowIds, id]);
+          onChange([...options, ""]);
+        }}
+      >
+        <Icon name="plus" size={14} />
+        Add {label.toLowerCase()}
+        <span className="mono">{options.length}/10</span>
+      </button>
+    </fieldset>
+  );
+}
+
 function QuestionEditor({
   question: q,
   index,
@@ -192,23 +281,14 @@ function QuestionEditor({
             />
           </label>
           {q.type !== "boolean" && (
-            <label>
-              {q.type === "score"
-                ? "Scale labels, lowest → highest"
-                : "Choices"}
-              <textarea
-                className="mono"
-                rows={3}
-                disabled={disabled}
-                value={q.options.join("\n")}
-                onChange={(e) =>
-                  onChange({ ...q, options: e.target.value.split("\n") })
-                }
-              />
-              <span className="field-hint">
-                One per line. Between 2 and 10 unique labels.
-              </span>
-            </label>
+            <OptionRows
+              key={q.type}
+              options={q.options}
+              type={q.type}
+              title={q.title}
+              disabled={disabled}
+              onChange={(options) => onChange({ ...q, options })}
+            />
           )}
           <button
             className="text-button remove"
