@@ -17,7 +17,7 @@ The app is deployed at [decision-lab.playground-vercel.tools](https://decision-l
 
 ## Demo flow
 
-The in-app **Demo guide** contains a five-minute presenter walkthrough. **Present** hides the introduction and extra explanation to put the workspace first during screen sharing. Light and dark themes are available.
+The in-app **Demo guide** contains a five-minute presenter walkthrough. **Present** hides the page heading during screen sharing. Light and dark themes are available.
 
 1. Run **Support triage** to return a boolean, routing choice, and urgency score together.
 2. Shuffle the input to a low-priority message and rerun. Expand questions to change their instructions, labels, answer keys, types, or scale. Toggle questions or add up to eight.
@@ -26,7 +26,15 @@ The in-app **Demo guide** contains a five-minute presenter walkthrough. **Presen
 5. Try **Visual inspection** with the included synthetic damaged-monitor PNG, or upload your own PNG/JPEG/WebP (4 MB max). It makes an actual multimodal request, with image bytes supplied to the decision model.
 6. Use **Benchmark ×3** for three sequential real calls. Run history shows round-trip latency and Gateway latency, with measured p50/p95, a chart, and JSON export.
 7. Adjust the automation threshold to change the local policy outcome immediately. No additional inference is needed. Missing confidence, refusals, and uncertain answers go to review.
-8. Open **Custom scenario** to start with blank context and an open decision editor. Choose Text, JSON, or Image; supply your context; edit the answer key, label, type, instructions, and choice or scale labels. Add up to eight questions. Your draft, format, and uploaded image survive switching scenario tabs during the session. Refresh clears the draft.
+8. Try the five additional use cases:
+   - **Guardrails**: classify a message against an editable access policy.
+   - **Model router**: choose from an editable capability and latency table. The candidates are illustrative routing targets; this preset returns a selection without invoking that target model.
+   - **Lead qualification**: apply business qualification and priority criteria to an inquiry.
+   - **Catalog classification**: classify the included synthetic backpack image by category and color, and flag listing conflicts.
+   - **Contract screening**: check a short supplier clause against an editable company playbook and route deviations for review.
+9. Open **Custom scenario** to start with blank context and an open decision editor. Choose Text, JSON, or Image; supply your context; edit the answer key, label, type, instructions, and choice or scale labels. Add up to eight questions. Your draft, format, and uploaded image survive switching use cases during the session. Refresh clears the draft.
+
+Use the grouped sidebar to choose among the eight examples and Custom scenario. At smaller widths, a native select shows the same groups. The workspace keeps context, editable decisions, and results visible without a marketing introduction or feature summaries.
 
 ## Measurement and model behavior
 
@@ -53,7 +61,8 @@ The hosted presentation app uses Vercel deployment protection to restrict access
 
 - `components/playground.tsx`: interactive workspace, configuration, results, history, and presenter guide.
 - `lib/decision.ts`: request construction, validation, confidence policy, and latency statistics.
-- `lib/presets.ts`: three synthetic examples and a blank custom scenario.
+- `lib/presets.ts`: eight synthetic examples and a blank custom scenario.
+- `components/use-case-picker.tsx`: grouped desktop navigation and a responsive native select.
 - `app/api/decide/route.ts`: server-only authenticated decision call.
 - `app/api/models/route.ts`: live team eligibility check.
-- `public/monitor-damaged.svg`: source for the synthetic inspection image; PNG is the actual model input.
+- `public/monitor-damaged.svg` and `public/backpack.svg`: sources for the synthetic product images; PNGs are the actual model inputs.

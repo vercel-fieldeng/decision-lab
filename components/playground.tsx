@@ -29,12 +29,8 @@ import {
 } from "@/lib/decision";
 import { PRESETS, SUPPORT_ALTERNATES, type PresetId } from "@/lib/presets";
 import { Icon, type IconName } from "./icons";
+import { UseCasePicker } from "./use-case-picker";
 
-const modeIcons: Record<Mode, IconName> = {
-  text: "text",
-  json: "braces",
-  image: "image",
-};
 const modeLabels: Record<Mode, string> = {
   text: "Text",
   json: "JSON",
@@ -107,13 +103,11 @@ function QuestionEditor({
           className="question-open"
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
-          aria-label={`Edit question ${index + 1}: ${q.title}`}
+          aria-label={`Edit decision ${index + 1}: ${q.title}`}
         >
           <span>{q.title}</span>
           <span className="question-summary">
-            {q.type === "boolean"
-              ? "Yes or no, with probability"
-              : q.options.join(" · ")}
+            {q.type === "boolean" ? "Yes / No" : q.options.join(" · ")}
           </span>
         </button>
         <span className="type-badge">{q.type}</span>
@@ -149,7 +143,7 @@ function QuestionEditor({
               />
             </label>
             <label>
-              Question type
+              Decision type
               <select
                 value={q.type}
                 disabled={disabled}
@@ -221,7 +215,7 @@ function QuestionEditor({
             onClick={onRemove}
             disabled={disabled}
           >
-            Remove question
+            Remove decision
           </button>
         </div>
       )}
@@ -354,7 +348,7 @@ export function Playground() {
     cloneQuestions(preset.questions),
   );
   const [image, setImage] = useState<string>();
-  const [imageName, setImageName] = useState("monitor-damaged.png");
+  const [imageName, setImageName] = useState("");
   const [customImage, setCustomImage] = useState(false);
   const [model, setModel] = useState(DEFAULT_MODEL);
   const [models, setModels] = useState<Model[]>([]);
@@ -422,9 +416,8 @@ export function Playground() {
   const requestPreview = JSON.stringify(buildRequest(config, true), null, 2);
   const syntheticInput =
     !isCustom &&
-    (mode === "text"
-      ? SUPPORT_ALTERNATES.includes(input)
-      : input === preset.input) &&
+    (input === preset.input ||
+      (presetId === "support" && SUPPORT_ALTERNATES.includes(input))) &&
     (mode !== "image" || !customImage);
 
   const checkConnection = useCallback(async () => {
@@ -463,8 +456,8 @@ export function Playground() {
     else dialog.current?.close();
   }, [guideOpen]);
 
-  async function loadSampleImage() {
-    const response = await fetch("/monitor-damaged.png");
+  async function loadSampleImage(src: string) {
+    const response = await fetch(src);
     if (!response.ok) throw new Error("The sample image could not be loaded.");
     const blob = await response.blob();
     return new Promise<string>((resolve, reject) => {
@@ -504,14 +497,12 @@ export function Playground() {
     setSelectedRunId(undefined);
     setResultTab("answers");
     setImage(draft?.image);
-    setImageName(
-      draft?.imageName ?? (id === "inspection" ? "monitor-damaged.png" : ""),
-    );
+    setImageName(draft?.imageName ?? p.image?.src.split("/").pop() ?? "");
     setCustomImage(draft?.customImage ?? false);
     setSampleIndex(0);
-    if (id === "inspection") {
+    if (p.image) {
       try {
-        const sampleImage = await loadSampleImage();
+        const sampleImage = await loadSampleImage(p.image.src);
         if (imageVersion === imageLoadVersion.current) setImage(sampleImage);
       } catch (e) {
         if (imageVersion === imageLoadVersion.current)
@@ -715,7 +706,7 @@ export function Playground() {
             </button>
             <a
               className="text-button docs-link"
-              href="https://vercel.com/docs/ai-gateway/modalities/decision"
+              href="https://vercel.com/docs/ai-gateway/sdks-and-apis/openai-decisions"
               target="_blank"
               rel="noreferrer"
             >
@@ -735,781 +726,644 @@ export function Playground() {
       </header>
 
       <main>
-        {focused && <h1 className="sr-only">Decision Lab playground</h1>}
-        <section className="hero">
-          <div>
-            <div className="eyebrow">
-              <span className="tiny-square" />
-              THE DECISION LAYER
-            </div>
-            <h1>From context to action.</h1>
-            <p>
-              Give a model context. Ask precise questions.
-              <br className="mobile-break" /> Get answers your application can
-              act on.
-            </p>
-          </div>
-          <div
-            className="hero-flow"
-            role="img"
-            aria-label="One shared input becomes boolean, choice, and score answers"
-          >
-            <div className="flow-context">
-              <Icon name="layers" size={22} />
-              <span>Context</span>
-            </div>
-            <span className="flow-connector" />
-            <div className="flow-engine">
-              <Icon name="bolt" size={21} />
-            </div>
-            <span className="flow-connector" />
-            <div className="flow-outputs">
-              <span>
-                <Icon name="boolean" size={13} />
-                Boolean
-              </span>
-              <span>
-                <Icon name="choice" size={13} />
-                Choice
-              </span>
-              <span>
-                <Icon name="score" size={13} />
-                Score
-              </span>
-            </div>
-            <div className="flow-caption mono">ONE REQUEST. TYPED ANSWERS.</div>
-          </div>
-        </section>
-
-        <section
-          id="workspace"
-          className="workspace"
-          aria-label="Decision playground"
-        >
-          <div className="workspace-top">
-            <div className="workspace-title">
-              <span className="dot green" />
-              <h2>Playground</h2>
-              <span className="version mono">01</span>
-            </div>
-          </div>
-          <div
-            className="scenario-bar"
-            role="tablist"
-            aria-label="Demo scenario"
-          >
-            {PRESETS.map((p) => (
-              <button
-                key={p.id}
-                role="tab"
-                aria-selected={p.id === presetId}
-                tabIndex={p.id === presetId ? 0 : -1}
-                onKeyDown={navigateTabs}
-                className={`scenario-tab ${p.id === presetId ? "active" : ""}`}
-                onClick={() => void selectPreset(p.id)}
-                disabled={running}
-              >
-                <Icon
-                  name={p.id === "custom" ? "plus" : modeIcons[p.mode]}
-                  size={17}
-                />
-                <span>{p.label}</span>
-                <span className="scenario-type mono">{p.short}</span>
-              </button>
-            ))}
-          </div>
-          <div className="model-strip">
-            {preset.description && <span>{preset.description}</span>}
-            <label className="model-select">
-              <span className="model-symbol">◎</span>
-              <select
-                aria-label="Decision model"
-                value={model}
-                disabled={running || connection !== "connected"}
-                onChange={(e) => setModel(e.target.value)}
-              >
-                {models.length ? (
-                  models.map((m) => (
-                    <option key={m.id} value={m.id} disabled={!m.eligible}>
-                      {m.name}
-                      {!m.eligible ? " · provider blocked" : ""}
-                    </option>
-                  ))
-                ) : (
-                  <option value={DEFAULT_MODEL}>GPT-6 Luna Decisions</option>
-                )}
-              </select>
-              <Icon name="chevron" size={12} />
-            </label>
-          </div>
-          {connection === "error" && (
-            <div className="connection-banner" role="status">
-              <Icon name="info" />
-              <span>{connectionError}</span>
-              <button
-                className="text-button"
-                onClick={() => void checkConnection()}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-
-          <div className="workspace-grid">
-            <div className="configure-pane">
-              <div className="section-heading">
-                <h3>
-                  <span className="step mono">01</span>Provide context
-                </h3>
-                <div className="heading-actions">
-                  {isCustom ? (
-                    <label className="context-format">
-                      <span className="sr-only">Context format</span>
-                      <select
-                        value={mode}
-                        disabled={running}
-                        onChange={(e) => {
-                          if (!isMode(e.target.value)) return;
-                          ++imageLoadVersion.current;
-                          setMode(e.target.value);
-                          setError("");
-                        }}
-                      >
-                        <option value="text">Text</option>
-                        <option value="json">JSON</option>
-                        <option value="image">Image</option>
-                      </select>
-                      <Icon name="chevron" size={12} />
-                    </label>
-                  ) : (
-                    <span className="type-badge mono">{modeLabels[mode]}</span>
-                  )}
-                  {presetId === "support" && (
-                    <button
-                      className="icon-button"
-                      title="Try another synthetic message"
-                      aria-label="Try another sample"
-                      disabled={running}
-                      onClick={() => {
-                        const next =
-                          (sampleIndex + 1) % SUPPORT_ALTERNATES.length;
-                        setSampleIndex(next);
-                        setInput(SUPPORT_ALTERNATES[next]);
-                      }}
-                    >
-                      <Icon name="refresh" size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div
-                className={`input-shell ${mode === "image" ? "image-shell" : ""}`}
-              >
-                {mode === "image" && (
-                  <>
-                    <div className="image-preview">
-                      {image ? (
-                        <Image
-                          unoptimized
-                          src={image}
-                          width={960}
-                          height={600}
-                          alt={
-                            !customImage
-                              ? "Synthetic returned monitor with a visibly cracked screen"
-                              : "User-provided scenario image"
-                          }
-                          className="product-image"
-                        />
-                      ) : (
-                        <div className="image-placeholder">
-                          <Icon name="image" size={28} />
-                          <span>
-                            {isCustom
-                              ? "Add an image for your scenario"
-                              : "Loading synthetic sample…"}
-                          </span>
-                        </div>
-                      )}
-                      <button
-                        className="upload-button"
-                        disabled={running}
-                        onClick={() => fileInput.current?.click()}
-                      >
-                        <Icon name="upload" size={13} />
-                        {image ? "Replace image" : "Choose image"}
-                      </button>
-                    </div>
-                    {image && (
-                      <div className="image-file">
-                        <Icon name="image" size={12} />
-                        <span>{imageName}</span>
-                        <span className="mono">
-                          {image
-                            ? `${Math.round((image.length * 0.75) / 1024)} KB`
-                            : "—"}
-                        </span>
-                      </div>
-                    )}
-                    <input
-                      className="sr-only"
-                      type="file"
-                      ref={fileInput}
-                      accept="image/png,image/jpeg,image/webp"
-                      aria-label="Upload image"
-                      disabled={running}
-                      onChange={(e) => {
-                        void uploadImage(e.target.files?.[0]);
-                        e.target.value = "";
-                      }}
-                    />
-                  </>
-                )}
-                <textarea
-                  aria-label={
-                    mode === "json"
-                      ? "Structured JSON input"
-                      : mode === "image"
-                        ? "Image instructions"
-                        : "Input context"
-                  }
-                  className={`context-input ${mode === "json" ? "mono json-input" : ""} ${mode === "image" ? "image-prompt" : ""}`}
-                  placeholder={
-                    isCustom
-                      ? mode === "json"
-                        ? "Paste a JSON record to evaluate…"
-                        : mode === "image"
-                          ? "Describe the context or criteria for evaluating this image…"
-                          : "Write or paste the context for your scenario…"
-                      : undefined
-                  }
-                  maxLength={24_000}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={running}
-                  spellCheck={false}
-                />
-                <div className="input-footer">
-                  <span>
-                    <span className="dot" />
-                    {syntheticInput ? "Synthetic example" : "Custom input"}
-                  </span>
-                  <span className="mono">
-                    {input.length.toLocaleString()} chars
-                  </span>
-                </div>
-              </div>
-
-              <div className="section-heading questions-heading">
-                <h3>
-                  <span className="step mono">02</span>Define the decisions
-                </h3>
-                <span className="muted small">
-                  {activeCount} in one request
-                </span>
-              </div>
-              <div className="question-list">
-                {questions.map((q, index) => (
-                  <QuestionEditor
-                    key={q.id}
-                    question={q}
-                    index={index}
-                    disabled={running}
-                    onChange={(next) =>
-                      setQuestions((previous) =>
-                        previous.map((x) => (x.id === q.id ? next : x)),
-                      )
-                    }
-                    onRemove={() =>
-                      setQuestions((previous) =>
-                        previous.filter((x) => x.id !== q.id),
-                      )
-                    }
-                  />
-                ))}
-              </div>
-              <button
-                className="add-question text-button"
-                disabled={running || questions.length >= 8}
-                onClick={() => {
-                  const id = crypto.randomUUID();
-                  setQuestions((previous) => [...previous, createQuestion(id)]);
-                }}
-              >
-                <Icon name="plus" size={14} />
-                Add a question<span className="mono">{questions.length}/8</span>
-              </button>
-
-              {error && (
-                <div className="error-message" role="alert">
-                  <Icon name="info" size={16} />
-                  <span>{error}</span>
-                  <button
-                    className="icon-button"
-                    aria-label="Dismiss error"
-                    onClick={() => setError("")}
+        <div className={`page-heading ${focused ? "sr-only" : ""}`}>
+          <h1>Decision models</h1>
+        </div>
+        <div className="playground-layout">
+          <UseCasePicker
+            selected={presetId}
+            disabled={running}
+            onSelect={(id) => void selectPreset(id)}
+          />
+          <div className="playground-content">
+            <section
+              id="workspace"
+              className="workspace"
+              aria-labelledby="scenario-title"
+            >
+              <div className="workspace-top">
+                <h2 id="scenario-title">{preset.label}</h2>
+                <label className="model-select">
+                  <select
+                    aria-label="Decision model"
+                    value={model}
+                    disabled={running || connection !== "connected"}
+                    onChange={(e) => setModel(e.target.value)}
                   >
-                    <Icon name="close" size={14} />
+                    {models.length ? (
+                      models.map((m) => (
+                        <option key={m.id} value={m.id} disabled={!m.eligible}>
+                          {m.name}
+                          {!m.eligible ? " (unavailable)" : ""}
+                        </option>
+                      ))
+                    ) : (
+                      <option value={DEFAULT_MODEL}>
+                        GPT-6 Luna Decisions
+                      </option>
+                    )}
+                  </select>
+                  <Icon name="chevron" size={12} />
+                </label>
+              </div>
+              {connection === "error" && (
+                <div className="connection-banner" role="status">
+                  <Icon name="info" />
+                  <span>{connectionError}</span>
+                  <button
+                    className="text-button"
+                    onClick={() => void checkConnection()}
+                  >
+                    Retry
                   </button>
                 </div>
               )}
-              <div className="run-actions">
-                <button
-                  className="primary-button"
-                  disabled={
-                    running ||
-                    !selectedEligible ||
-                    connection !== "connected" ||
-                    activeCount === 0
-                  }
-                  onClick={() => void runDecision()}
-                >
-                  <Icon
-                    name={running ? "refresh" : "play"}
-                    size={15}
-                    className={running ? "spin" : ""}
-                  />
-                  {running
-                    ? `Deciding${progress && progress.total > 1 ? ` ${progress.current}/${progress.total}` : ""}…`
-                    : "Run decision"}
-                  {running ? <Elapsed started={started} /> : <kbd>⌘ ↵</kbd>}
-                </button>
-                {running ? (
-                  <button
-                    className="secondary-button stop-button"
-                    onClick={() => controller.current?.abort()}
-                  >
-                    <Icon name="stop" size={14} />
-                    Stop
-                  </button>
-                ) : (
-                  <button
-                    className="secondary-button benchmark-button"
-                    disabled={
-                      !selectedEligible ||
-                      connection !== "connected" ||
-                      activeCount === 0
-                    }
-                    title="Send three real, sequential requests and measure their latency"
-                    onClick={() => void runDecision(3)}
-                  >
-                    <Icon name="bolt" size={15} />
-                    Benchmark<span className="mono">×3</span>
-                  </button>
-                )}
-              </div>
-            </div>
 
-            <div className="results-pane">
-              <div className="section-heading">
-                <h3>
-                  <span className="step mono">03</span>Act on the answers
-                </h3>
-                {selected && (
-                  <span className="result-status">
-                    <span className="dot green" />
-                    Completed
-                  </span>
-                )}
-              </div>
-              <div className="result-tabs">
-                <div role="tablist" aria-label="Result view">
-                  {(["answers", "request", "response"] as const).map((t) => (
-                    <button
-                      key={t}
-                      role="tab"
-                      aria-selected={resultTab === t}
-                      tabIndex={resultTab === t ? 0 : -1}
-                      onKeyDown={navigateTabs}
-                      className={resultTab === t ? "active" : ""}
-                      onClick={() => setResultTab(t)}
-                    >
-                      {t.charAt(0).toUpperCase() + t.slice(1)}
-                    </button>
-                  ))}
-                </div>
-                {resultTab !== "answers" && (
-                  <button
-                    className="icon-button"
-                    title="Copy JSON"
-                    aria-label="Copy JSON"
-                    onClick={() => void copyCode()}
+              <div className="workspace-grid">
+                <div className="configure-pane">
+                  <div className="section-heading">
+                    <h3>Context</h3>
+                    <div className="heading-actions">
+                      {isCustom ? (
+                        <label className="context-format">
+                          <span className="sr-only">Context format</span>
+                          <select
+                            value={mode}
+                            disabled={running}
+                            onChange={(e) => {
+                              if (!isMode(e.target.value)) return;
+                              ++imageLoadVersion.current;
+                              setMode(e.target.value);
+                              setError("");
+                            }}
+                          >
+                            <option value="text">Text</option>
+                            <option value="json">JSON</option>
+                            <option value="image">Image</option>
+                          </select>
+                          <Icon name="chevron" size={12} />
+                        </label>
+                      ) : (
+                        <span className="type-badge mono">
+                          {modeLabels[mode]}
+                        </span>
+                      )}
+                      {presetId === "support" && (
+                        <button
+                          className="icon-button"
+                          title="Try another synthetic message"
+                          aria-label="Try another sample"
+                          disabled={running}
+                          onClick={() => {
+                            const next =
+                              (sampleIndex + 1) % SUPPORT_ALTERNATES.length;
+                            setSampleIndex(next);
+                            setInput(SUPPORT_ALTERNATES[next]);
+                          }}
+                        >
+                          <Icon name="refresh" size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    className={`input-shell ${mode === "image" ? "image-shell" : ""}`}
                   >
-                    <Icon name={copied ? "check" : "copy"} size={14} />
-                  </button>
-                )}
-              </div>
-
-              {resultTab === "request" ? (
-                <div className="code-view">
-                  <div className="code-label">
-                    <span className="dot green" />
-                    <span className="mono">POST /v1/decisions</span>
-                    <span>Current configuration</span>
-                  </div>
-                  <pre tabIndex={0}>{requestPreview}</pre>
-                </div>
-              ) : resultTab === "response" ? (
-                <div className="code-view">
-                  <div className="code-label">
-                    <span className="dot" />
-                    <span className="mono">application/json</span>
-                    <span>
-                      {selected ? "Selected run" : "Run a decision first"}
-                    </span>
-                  </div>
-                  <pre tabIndex={0}>
-                    {selected
-                      ? JSON.stringify(selected.result, null, 2)
-                      : "// Your live Gateway response will appear here."}
-                  </pre>
-                </div>
-              ) : running ? (
-                <div className="result-empty running-state" role="status">
-                  <div className="running-orbit">
-                    <Icon name="bolt" size={25} />
-                  </div>
-                  <h4>Making the call.</h4>
-                  <p>
-                    {activeCount} questions, one shared context.
-                    <br />
-                    Waiting for the model’s complete response.
-                  </p>
-                  <Elapsed started={started} />
-                  <span className="empty-caption mono">
-                    LIVE GATEWAY REQUEST
-                  </span>
-                </div>
-              ) : selected ? (
-                <>
-                  {isStale && (
-                    <div className="stale-notice">
-                      <Icon name="info" size={14} />
-                      Configuration changed. Run again to update these answers.
-                    </div>
-                  )}
-                  <div className="result-metrics">
-                    <div>
-                      <span>
-                        Round trip
-                        <Icon name="clock" size={12} />
-                      </span>
-                      <strong className="mono">
-                        {time(selected.clientMs)}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>
-                        Gateway
-                        <Icon name="bolt" size={12} />
-                      </span>
-                      <strong className="mono">
-                        {time(selected.result.timing.gatewayMs)}
-                      </strong>
-                    </div>
-                    <div>
-                      <span>Request cost</span>
-                      <strong className="mono">
-                        {selected.result.provider_metadata?.gateway?.cost !==
-                        undefined
-                          ? `$${Number(selected.result.provider_metadata.gateway.cost).toFixed(6)}`
-                          : "—"}
-                      </strong>
-                    </div>
-                  </div>
-                  <div className="answers-stack">
-                    {selected.result.answers.map((answer, i) => (
-                      <AnswerCard
-                        key={`${answer.name}-${i}`}
-                        answer={answer}
-                        question={selected.config.questions.find(
-                          (q) => q.name === answer.name,
+                    {mode === "image" && (
+                      <>
+                        <div className="image-preview">
+                          {image ? (
+                            <Image
+                              unoptimized
+                              src={image}
+                              width={960}
+                              height={600}
+                              alt={
+                                !customImage
+                                  ? (preset.image?.alt ?? "Scenario image")
+                                  : "User-provided scenario image"
+                              }
+                              className="product-image"
+                            />
+                          ) : (
+                            <div className="image-placeholder">
+                              <Icon name="image" size={28} />
+                              <span>
+                                {isCustom
+                                  ? "Add an image for your scenario"
+                                  : "Loading image..."}
+                              </span>
+                            </div>
+                          )}
+                          <button
+                            className="upload-button"
+                            disabled={running}
+                            onClick={() => fileInput.current?.click()}
+                          >
+                            <Icon name="upload" size={13} />
+                            {image ? "Replace image" : "Choose image"}
+                          </button>
+                        </div>
+                        {image && (
+                          <div className="image-file">
+                            <Icon name="image" size={12} />
+                            <span>{imageName}</span>
+                            <span className="mono">
+                              {image
+                                ? `${Math.round((image.length * 0.75) / 1024)} KB`
+                                : "N/A"}
+                            </span>
+                          </div>
                         )}
-                        threshold={threshold / 100}
+                        <input
+                          className="sr-only"
+                          type="file"
+                          ref={fileInput}
+                          accept="image/png,image/jpeg,image/webp"
+                          aria-label="Upload image"
+                          disabled={running}
+                          onChange={(e) => {
+                            void uploadImage(e.target.files?.[0]);
+                            e.target.value = "";
+                          }}
+                        />
+                      </>
+                    )}
+                    <textarea
+                      key={`${presetId}-${mode}`}
+                      aria-label={
+                        mode === "json"
+                          ? "Structured JSON input"
+                          : mode === "image"
+                            ? "Image instructions"
+                            : "Input context"
+                      }
+                      className={`context-input ${mode === "json" ? "mono json-input" : ""} ${mode === "image" ? "image-prompt" : ""}`}
+                      placeholder={
+                        isCustom
+                          ? mode === "json"
+                            ? "Paste a JSON record to evaluate"
+                            : mode === "image"
+                              ? "Describe the context or criteria for evaluating this image"
+                              : "Write or paste the context for your scenario"
+                          : undefined
+                      }
+                      maxLength={24_000}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      disabled={running}
+                      spellCheck={false}
+                    />
+                    <div className="input-footer">
+                      <span>
+                        <span className="dot" />
+                        {syntheticInput ? "Synthetic example" : "Custom input"}
+                      </span>
+                      <span className="mono">
+                        {input.length.toLocaleString()} chars
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="section-heading questions-heading">
+                    <h3>Decisions</h3>
+                    <span className="muted small">{activeCount} enabled</span>
+                  </div>
+                  <div className="question-list">
+                    {questions.map((q, index) => (
+                      <QuestionEditor
+                        key={`${presetId}-${q.id}`}
+                        question={q}
+                        index={index}
+                        disabled={running}
+                        onChange={(next) =>
+                          setQuestions((previous) =>
+                            previous.map((x) => (x.id === q.id ? next : x)),
+                          )
+                        }
+                        onRemove={() =>
+                          setQuestions((previous) =>
+                            previous.filter((x) => x.id !== q.id),
+                          )
+                        }
                       />
                     ))}
                   </div>
-                  <div className="action-outcome">
-                    <span
-                      className={`outcome-icon ${disposition(selected.result.answers, threshold / 100) === "Ready to automate" ? "ready" : ""}`}
-                    >
-                      <Icon
-                        name={
-                          disposition(
-                            selected.result.answers,
-                            threshold / 100,
-                          ) === "Ready to automate"
-                            ? "check"
-                            : "choice"
-                        }
-                        size={18}
-                      />
-                    </span>
-                    <div>
-                      <strong>
-                        {disposition(selected.result.answers, threshold / 100)}
-                      </strong>
-                      <p>
-                        {disposition(
-                          selected.result.answers,
-                          threshold / 100,
-                        ) === "Ready to automate"
-                          ? "Every answer meets your confidence policy."
-                          : "At least one answer needs a second look."}
-                      </p>
-                    </div>
-                    <span className="type-badge">Policy outcome</span>
-                  </div>
-                  <div className="response-meta mono">
-                    <span>
-                      {selected.result.usage?.input_tokens?.toLocaleString() ??
-                        "—"}{" "}
-                      input tokens
-                    </span>
-                    <span>
-                      {selected.result.usage?.output_tokens?.toLocaleString() ??
-                        "—"}{" "}
-                      output tokens
-                    </span>
-                    <span>
-                      {selected.result.provider_metadata?.gateway?.routing
-                        ?.finalProvider || "AI Gateway"}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <div className="result-empty">
-                  <div className="empty-symbol">
-                    <Icon name="choice" size={28} />
-                  </div>
-                  <h4>
-                    A little context.
-                    <br />A clear next step.
-                  </h4>
-                  <p>
-                    Run a decision to see probabilities, choices,
-                    <br />
-                    and scores arrive in one response.
-                  </p>
                   <button
-                    className="text-button empty-run"
-                    onClick={() => void runDecision()}
-                    disabled={!selectedEligible || connection !== "connected"}
-                  >
-                    Make your first decision
-                    <Icon name="arrow" size={14} />
-                  </button>
-                  <div className="empty-types">
-                    <span>
-                      <Icon name="boolean" size={14} />
-                      Boolean
-                    </span>
-                    <span>
-                      <Icon name="choice" size={14} />
-                      Choice
-                    </span>
-                    <span>
-                      <Icon name="score" size={14} />
-                      Score
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="threshold-setting">
-                <div>
-                  <label htmlFor="threshold">Automation threshold</label>
-                  <span className="mono threshold-number">{threshold}%</span>
-                </div>
-                <input
-                  id="threshold"
-                  type="range"
-                  min="50"
-                  max="99"
-                  step="1"
-                  value={threshold}
-                  onChange={(e) => setThreshold(Number(e.target.value))}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="run-history" aria-label="Measured run history">
-          <div className="history-heading">
-            <div>
-              <h2>
-                <Icon name="clock" size={16} />
-                Run history
-                <span className="count-badge mono">{runs.length}</span>
-              </h2>
-            </div>
-            <div className="history-actions">
-              {runs.length > 0 && (
-                <>
-                  <button className="text-button" onClick={exportRuns}>
-                    <Icon name="download" size={14} />
-                    Export
-                  </button>
-                  <button
-                    className="text-button"
-                    disabled={running}
+                    className="add-question text-button"
+                    disabled={running || questions.length >= 8}
                     onClick={() => {
-                      setRuns([]);
-                      setSelectedRunId(undefined);
+                      const id = crypto.randomUUID();
+                      setQuestions((previous) => [
+                        ...previous,
+                        createQuestion(id),
+                      ]);
                     }}
                   >
-                    Clear
+                    <Icon name="plus" size={14} />
+                    Add decision
+                    <span className="mono">{questions.length}/8</span>
                   </button>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="history-body">
-            <div className="history-chart">
-              <div className="chart-top">
-                <span className="small muted">Round-trip latency</span>
-                <span className="mono small">
-                  {measured.length
-                    ? `n = ${measured.length}`
-                    : "No measurements yet"}
-                </span>
-              </div>
-              {measured.length ? (
-                <div
-                  className="bar-chart"
-                  role="group"
-                  aria-label="Measured round-trip latencies"
-                >
-                  {[...measured].reverse().map((r, i) => (
+
+                  {error && (
+                    <div className="error-message" role="alert">
+                      <Icon name="info" size={16} />
+                      <span>{error}</span>
+                      <button
+                        className="icon-button"
+                        aria-label="Dismiss error"
+                        onClick={() => setError("")}
+                      >
+                        <Icon name="close" size={14} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="run-actions">
                     <button
-                      key={r.id}
-                      className={selectedRunId === r.id ? "selected" : ""}
-                      style={{
-                        height: `${Math.max(8, (r.clientMs / Math.max(...measured.map((x) => x.clientMs))) * 100)}%`,
-                      }}
-                      onClick={() => {
-                        setSelectedRunId(r.id);
-                        setResultTab("answers");
-                      }}
-                      title={`Run ${i + 1}: ${time(r.clientMs)} · ${r.preset}`}
-                      aria-label={`View run ${i + 1}: ${time(r.clientMs)}`}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-chart">
-                  <span />
-                  <span />
-                  <span />
-                  <p>Your first run sets the baseline.</p>
-                </div>
-              )}
-              <div className="chart-bottom mono">
-                <span>FIRST RUN</span>
-                <span>MOST RECENT</span>
-              </div>
-            </div>
-            <div className="history-stats">
-              <div>
-                <span>
-                  Median <small>p50</small>
-                </span>
-                <strong className="mono">
-                  {p50 !== undefined ? time(p50) : "—"}
-                </strong>
-              </div>
-              <div>
-                <span>
-                  Tail latency <small>p95</small>
-                </span>
-                <strong className="mono">
-                  {p95 !== undefined ? time(p95) : "—"}
-                </strong>
-              </div>
-            </div>
-          </div>
-          {runs.length > 0 && (
-            <div className="history-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Run</th>
-                    <th>Scenario</th>
-                    <th>Questions</th>
-                    <th>Round trip</th>
-                    <th>Gateway</th>
-                    <th>Outcome</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {runs.slice(0, 8).map((r, index) => (
-                    <tr
-                      key={r.id}
-                      className={r.id === selectedRunId ? "selected" : ""}
+                      className="primary-button"
+                      disabled={
+                        running ||
+                        !selectedEligible ||
+                        connection !== "connected" ||
+                        activeCount === 0
+                      }
+                      onClick={() => void runDecision()}
                     >
-                      <td>
+                      <Icon
+                        name={running ? "refresh" : "play"}
+                        size={15}
+                        className={running ? "spin" : ""}
+                      />
+                      {running
+                        ? `Deciding${progress && progress.total > 1 ? ` ${progress.current}/${progress.total}` : ""}...`
+                        : "Run decision"}
+                      {running ? <Elapsed started={started} /> : <kbd>⌘ ↵</kbd>}
+                    </button>
+                    {running ? (
+                      <button
+                        className="secondary-button stop-button"
+                        onClick={() => controller.current?.abort()}
+                      >
+                        <Icon name="stop" size={14} />
+                        Stop
+                      </button>
+                    ) : (
+                      <button
+                        className="secondary-button benchmark-button"
+                        disabled={
+                          !selectedEligible ||
+                          connection !== "connected" ||
+                          activeCount === 0
+                        }
+                        title="Send three real, sequential requests and measure their latency"
+                        onClick={() => void runDecision(3)}
+                      >
+                        <Icon name="bolt" size={15} />
+                        Benchmark<span className="mono">×3</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="results-pane">
+                  <div className="section-heading">
+                    <h3>Results</h3>
+                    {selected && (
+                      <span className="result-status">
+                        <span className="dot green" />
+                        Completed
+                      </span>
+                    )}
+                  </div>
+                  <div className="result-tabs">
+                    <div role="tablist" aria-label="Result view">
+                      {(["answers", "request", "response"] as const).map(
+                        (t) => (
+                          <button
+                            key={t}
+                            role="tab"
+                            aria-selected={resultTab === t}
+                            tabIndex={resultTab === t ? 0 : -1}
+                            onKeyDown={navigateTabs}
+                            className={resultTab === t ? "active" : ""}
+                            onClick={() => setResultTab(t)}
+                          >
+                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                    {resultTab !== "answers" && (
+                      <button
+                        className="icon-button"
+                        title="Copy JSON"
+                        aria-label="Copy JSON"
+                        onClick={() => void copyCode()}
+                      >
+                        <Icon name={copied ? "check" : "copy"} size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {resultTab === "request" ? (
+                    <div className="code-view">
+                      <div className="code-label">
+                        <span className="dot green" />
+                        <span className="mono">POST /v1/decisions</span>
+                        <span>Current configuration</span>
+                      </div>
+                      <pre tabIndex={0}>{requestPreview}</pre>
+                    </div>
+                  ) : resultTab === "response" ? (
+                    <div className="code-view">
+                      <div className="code-label">
+                        <span className="dot" />
+                        <span className="mono">application/json</span>
+                        <span>
+                          {selected ? "Selected run" : "Run a decision first"}
+                        </span>
+                      </div>
+                      <pre tabIndex={0}>
+                        {selected
+                          ? JSON.stringify(selected.result, null, 2)
+                          : "// No response yet."}
+                      </pre>
+                    </div>
+                  ) : running ? (
+                    <div className="result-empty running-state" role="status">
+                      <div className="running-orbit">
+                        <Icon name="bolt" size={25} />
+                      </div>
+                      <h4>Running</h4>
+                      <Elapsed started={started} />
+                    </div>
+                  ) : selected ? (
+                    <>
+                      {isStale && (
+                        <div className="stale-notice">
+                          <Icon name="info" size={14} />
+                          Configuration changed. Run again to update these
+                          answers.
+                        </div>
+                      )}
+                      <div className="result-metrics">
+                        <div>
+                          <span>
+                            Round trip
+                            <Icon name="clock" size={12} />
+                          </span>
+                          <strong className="mono">
+                            {time(selected.clientMs)}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>
+                            Gateway
+                            <Icon name="bolt" size={12} />
+                          </span>
+                          <strong className="mono">
+                            {time(selected.result.timing.gatewayMs)}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>Request cost</span>
+                          <strong className="mono">
+                            {selected.result.provider_metadata?.gateway
+                              ?.cost !== undefined
+                              ? `$${Number(selected.result.provider_metadata.gateway.cost).toFixed(6)}`
+                              : "N/A"}
+                          </strong>
+                        </div>
+                      </div>
+                      <div className="answers-stack">
+                        {selected.result.answers.map((answer, i) => (
+                          <AnswerCard
+                            key={`${answer.name}-${i}`}
+                            answer={answer}
+                            question={selected.config.questions.find(
+                              (q) => q.name === answer.name,
+                            )}
+                            threshold={threshold / 100}
+                          />
+                        ))}
+                      </div>
+                      <div className="action-outcome">
+                        <span
+                          className={`outcome-icon ${disposition(selected.result.answers, threshold / 100) === "Ready to automate" ? "ready" : ""}`}
+                        >
+                          <Icon
+                            name={
+                              disposition(
+                                selected.result.answers,
+                                threshold / 100,
+                              ) === "Ready to automate"
+                                ? "check"
+                                : "choice"
+                            }
+                            size={18}
+                          />
+                        </span>
+                        <div>
+                          <strong>
+                            {disposition(
+                              selected.result.answers,
+                              threshold / 100,
+                            )}
+                          </strong>
+                        </div>
+                      </div>
+                      <div className="response-meta mono">
+                        <span>
+                          {selected.result.usage?.input_tokens?.toLocaleString() ??
+                            "N/A"}{" "}
+                          input tokens
+                        </span>
+                        <span>
+                          {selected.result.usage?.output_tokens?.toLocaleString() ??
+                            "N/A"}{" "}
+                          output tokens
+                        </span>
+                        <span>
+                          {selected.result.provider_metadata?.gateway?.routing
+                            ?.finalProvider || "AI Gateway"}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="result-empty">
+                      <div className="empty-symbol">
+                        <Icon name="choice" size={28} />
+                      </div>
+                      <h4>No results yet</h4>
+                      <p>Run this scenario to see the decisions.</p>
+                    </div>
+                  )}
+
+                  <div className="threshold-setting">
+                    <div>
+                      <label htmlFor="threshold">Automation threshold</label>
+                      <span className="mono threshold-number">
+                        {threshold}%
+                      </span>
+                    </div>
+                    <input
+                      id="threshold"
+                      type="range"
+                      min="50"
+                      max="99"
+                      step="1"
+                      value={threshold}
+                      onChange={(e) => setThreshold(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="run-history" aria-label="Measured run history">
+              <div className="history-heading">
+                <div>
+                  <h2>
+                    <Icon name="clock" size={16} />
+                    Run history
+                    <span className="count-badge mono">{runs.length}</span>
+                  </h2>
+                </div>
+                <div className="history-actions">
+                  {runs.length > 0 && (
+                    <>
+                      <button className="text-button" onClick={exportRuns}>
+                        <Icon name="download" size={14} />
+                        Export
+                      </button>
+                      <button
+                        className="text-button"
+                        disabled={running}
+                        onClick={() => {
+                          setRuns([]);
+                          setSelectedRunId(undefined);
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="history-body">
+                <div className="history-chart">
+                  <div className="chart-top">
+                    <span className="small muted">Round-trip latency</span>
+                    <span className="mono small">
+                      {measured.length
+                        ? `n = ${measured.length}`
+                        : "No measurements yet"}
+                    </span>
+                  </div>
+                  {measured.length ? (
+                    <div
+                      className="bar-chart"
+                      role="group"
+                      aria-label="Measured round-trip latencies"
+                    >
+                      {[...measured].reverse().map((r, i) => (
                         <button
-                          className="text-button mono"
+                          key={r.id}
+                          className={selectedRunId === r.id ? "selected" : ""}
+                          style={{
+                            height: `${Math.max(8, (r.clientMs / Math.max(...measured.map((x) => x.clientMs))) * 100)}%`,
+                          }}
                           onClick={() => {
                             setSelectedRunId(r.id);
                             setResultTab("answers");
                           }}
-                        >
-                          #{String(runs.length - index).padStart(2, "0")}
-                          <Icon name="upRight" size={12} />
-                        </button>
-                      </td>
-                      <td>{r.preset}</td>
-                      <td className="mono">{r.result.answers.length}</td>
-                      <td className="mono">{time(r.clientMs)}</td>
-                      <td className="mono">
-                        {time(r.result.timing.gatewayMs)}
-                      </td>
-                      <td>
-                        <span
-                          className={`dot ${disposition(r.result.answers, threshold / 100) === "Ready to automate" ? "green" : "amber"}`}
+                          title={`Run ${i + 1}: ${time(r.clientMs)} · ${r.preset}`}
+                          aria-label={`View run ${i + 1}: ${time(r.clientMs)}`}
                         />
-                        {disposition(r.result.answers, threshold / 100)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <div className="principles">
-          <div>
-            <span className="principle-icon">
-              <Icon name="bolt" size={18} />
-            </span>
-            <h3>Decide, then move.</h3>
-            <p>
-              Typed answers instead of free-form text. Build the next action
-              directly into your application.
-            </p>
-          </div>
-          <div>
-            <span className="principle-icon">
-              <Icon name="layers" size={18} />
-            </span>
-            <h3>One context. Many questions.</h3>
-            <p>
-              Combine booleans, choices, and scores in a single request. Share
-              the input across every question.
-            </p>
-          </div>
-          <div>
-            <span className="principle-icon">
-              <Icon name="choice" size={18} />
-            </span>
-            <h3>Your policy stays in control.</h3>
-            <p>
-              Confidence is a signal, not a guarantee. Set a threshold and keep
-              uncertain decisions with a human.
-            </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-chart">
+                      <span />
+                      <span />
+                      <span />
+                      <p>No runs yet</p>
+                    </div>
+                  )}
+                  <div className="chart-bottom mono">
+                    <span>FIRST RUN</span>
+                    <span>MOST RECENT</span>
+                  </div>
+                </div>
+                <div className="history-stats">
+                  <div>
+                    <span>
+                      Median <small>p50</small>
+                    </span>
+                    <strong className="mono">
+                      {p50 !== undefined ? time(p50) : "N/A"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>
+                      Tail latency <small>p95</small>
+                    </span>
+                    <strong className="mono">
+                      {p95 !== undefined ? time(p95) : "N/A"}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+              {runs.length > 0 && (
+                <div className="history-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Run</th>
+                        <th>Scenario</th>
+                        <th>Decisions</th>
+                        <th>Round trip</th>
+                        <th>Gateway</th>
+                        <th>Outcome</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {runs.slice(0, 8).map((r, index) => (
+                        <tr
+                          key={r.id}
+                          className={r.id === selectedRunId ? "selected" : ""}
+                        >
+                          <td>
+                            <button
+                              className="text-button mono"
+                              onClick={() => {
+                                setSelectedRunId(r.id);
+                                setResultTab("answers");
+                              }}
+                            >
+                              #{String(runs.length - index).padStart(2, "0")}
+                              <Icon name="upRight" size={12} />
+                            </button>
+                          </td>
+                          <td>{r.preset}</td>
+                          <td className="mono">{r.result.answers.length}</td>
+                          <td className="mono">{time(r.clientMs)}</td>
+                          <td className="mono">
+                            {time(r.result.timing.gatewayMs)}
+                          </td>
+                          <td>
+                            <span
+                              className={`dot ${disposition(r.result.answers, threshold / 100) === "Ready to automate" ? "green" : "amber"}`}
+                            />
+                            {disposition(r.result.answers, threshold / 100)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           </div>
         </div>
         <footer>
@@ -1518,7 +1372,6 @@ export function Playground() {
             Decision Lab
           </span>
           <span>
-            Built with{" "}
             <svg width="11" height="10" viewBox="0 0 11 10" aria-hidden="true">
               <path d="m5.5 0 5.5 10H0Z" fill="currentColor" />
             </svg>{" "}
@@ -1546,15 +1399,12 @@ export function Playground() {
               <Icon name="close" />
             </button>
           </div>
-          <h2>A five-minute walkthrough.</h2>
-          <p className="guide-intro">
-            Show how a small, typed decision becomes a useful action.
-          </p>
+          <h2>Demo guide</h2>
           <ol>
             <li>
               <span className="mono">01</span>
               <div>
-                <h3>Start with the shape of an answer.</h3>
+                <h3>Run a scenario</h3>
                 <p>
                   Run Support triage. Point out the boolean, routing choice, and
                   urgency score returned together. Open Response to show the
@@ -1565,7 +1415,7 @@ export function Playground() {
             <li>
               <span className="mono">02</span>
               <div>
-                <h3>Change the evidence.</h3>
+                <h3>Change the input</h3>
                 <p>
                   Use the shuffle icon to swap the message. Run again and watch
                   the classification change without changing application code.
@@ -1575,7 +1425,7 @@ export function Playground() {
             <li>
               <span className="mono">03</span>
               <div>
-                <h3>Make the configuration visible.</h3>
+                <h3>Edit decisions</h3>
                 <p>
                   Expand a question to edit instructions, choices, or its scale.
                   Toggle questions off. Open Request to show exactly what goes
@@ -1586,19 +1436,19 @@ export function Playground() {
             <li>
               <span className="mono">04</span>
               <div>
-                <h3>Go beyond text.</h3>
+                <h3>Switch use cases</h3>
                 <p>
-                  Try Return eligibility for JSON and Visual inspection for a
-                  real image request. The output contract stays boolean, choice,
-                  and score. Open Custom scenario to supply your own context and
-                  define a decision from scratch.
+                  Try Model router for capability-based routing, Catalog
+                  classification for image input, or Contract screening for a
+                  configurable playbook. Custom scenario accepts your own
+                  context and decisions.
                 </p>
               </div>
             </li>
             <li>
               <span className="mono">05</span>
               <div>
-                <h3>Measure, then set a policy.</h3>
+                <h3>Compare latency and confidence</h3>
                 <p>
                   Run Benchmark for three measured calls. Explain that round
                   trip includes the network and Gateway. Raise the confidence

@@ -5,9 +5,9 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 export const metadata: Metadata = {
-  title: "Decision Lab — Turn context into action",
+  title: "Decision Lab",
   description:
-    "A hands-on playground for fast, typed decisions across text, structured data, and images. Powered by Vercel AI Gateway.",
+    "Configure decision models for text, JSON, and images with Vercel AI Gateway.",
 };
 
 export default function RootLayout({

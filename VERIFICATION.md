@@ -2,6 +2,33 @@
 
 Verified October 16, 2026, locally and on the production deployment in Internal Playground.
 
+## October 18 use case expansion
+
+The playground now has eight examples and a custom scenario. Each new example was tested from the browser through `/api/decide` and AI Gateway to rendered results.
+
+| Scenario | Live result |
+| --- | --- |
+| Guardrails | Policy violation: Yes; Action: Block; Risk: Critical. |
+| Model router | Needs vision: Yes; Selected model: Vision; Complexity: Medium. A simple text classification request instead selected Fast text with no vision requirement. |
+| Lead qualification | Qualified: Yes; Route: Sales; Priority: High. |
+| Catalog classification | Actual backpack PNG sent inline; Category: Backpacks; Color: Olive; Needs review: No. |
+| Contract screening | Default clause: outside playbook, Legal review, Major deviation. Matching notice-period and price-increase limits: within playbook, Standard, None. An ambiguous notice-period phrase discovered during testing was clarified. |
+
+| Before | After |
+| --- | --- |
+| Four scenario tabs | Grouped desktop sidebar with all nine use cases; native grouped select at widths up to 1160 px. |
+| Large introduction, flow illustration, and feature summaries | Compact page title and workspace centered on context, decisions, and results. |
+| Promotional result placeholders and repeated outcome prose | Short empty state and direct result labels. |
+| Fixed monitor-specific sample loading and image description | Typed image metadata per preset, with a synthetic backpack SVG and PNG for catalog classification. |
+| Scenario editors could retain the previous input's scroll position | Context remounts on use case or format changes; decision editors reset per scenario. Custom draft restoration is preserved. |
+| Text presets could be mislabeled as custom input | Provenance checks match the selected preset, including the contract sample. |
+| Small picker and navigation controls | At least 40 px controls for the new navigation and model selector, keyboard focus rings, and native mobile selection. |
+| Older documentation link and verbose labels | Current native Decisions API docs, shorter labels, and no em dashes in seeded UI copy. |
+
+Validation: ten tests passed, strict typecheck passed, and production build passed. Seeded-use-case tests load the actual PNGs and validate every default request. Browser checks found no horizontal overflow at 390, 800, 1160, 1280, and 1440 px. Mobile selection, light/dark layouts, and Present mode worked. The custom image draft, input, format, and edited decision survived switching use cases. Mobile light and desktop dark axe audits reported zero violations; the keyboard shortcut glyph remains an incomplete automated contrast check. Browser console had no application errors.
+
+Synthetic-data gate: five new synthetic scenarios, zero ambiguous data clusters, zero real records embedded. Model routing targets and their relative latency labels are illustrative configuration, not measurements or additional Gateway calls. Contract screening compares supplied text to a supplied playbook; it does not determine enforceability or approve an agreement.
+
 ## Production deployment
 
 - URL: https://decision-lab.playground-vercel.tools
