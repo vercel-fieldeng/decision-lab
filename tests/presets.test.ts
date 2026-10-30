@@ -9,7 +9,7 @@ import {
 } from "../lib/decision.ts";
 
 test("every seeded use case produces a valid native request with its actual image asset", () => {
-  assert.equal(new Set(PRESETS.map((preset) => preset.id)).size, 9);
+  assert.equal(new Set(PRESETS.map((preset) => preset.id)).size, 10);
   for (const preset of PRESETS.filter((preset) => preset.id !== "custom")) {
     const bytes = preset.image
       ? readFileSync(new URL(`../public${preset.image.src}`, import.meta.url))
